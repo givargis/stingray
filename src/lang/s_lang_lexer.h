@@ -1,0 +1,94 @@
+/**
+ * Copyright (c) Tony Givargis, 2020-2025
+ *
+ * s_lang_lexer.h
+ */
+
+#ifndef _S_LANG_LEXER_H_
+#define _S_LANG_LEXER_H_
+
+#include "../utils/s_utils.h"
+
+enum {
+	S__LANG_LEXER_,
+	S__LANG_LEXER_EOF,
+	S__LANG_LEXER_INT,
+	S__LANG_LEXER_UINT,
+	S__LANG_LEXER_REAL,
+	S__LANG_LEXER_BOOL,
+	S__LANG_LEXER_STRING,
+	S__LANG_LEXER_IDENTIFIER,
+	/*-*/
+	S__LANG_LEXER_KEYWORD_,
+	S__LANG_LEXER_KEYWORD_TRUE,  /* LEXER_BOOL val.u=1 */
+	S__LANG_LEXER_KEYWORD_FALSE, /* LEXER_BOOL val.u=0 */
+	S__LANG_LEXER_KEYWORD_INT,
+	S__LANG_LEXER_KEYWORD_UINT,
+	S__LANG_LEXER_KEYWORD_REAL,
+	S__LANG_LEXER_KEYWORD_BOOL,
+	/*-*/
+	S__LANG_LEXER_OPERATOR_,
+	S__LANG_LEXER_OPERATOR_ADD,
+	S__LANG_LEXER_OPERATOR_SUB,
+	S__LANG_LEXER_OPERATOR_DIV,
+	S__LANG_LEXER_OPERATOR_MOD,
+	S__LANG_LEXER_OPERATOR_MUL,
+	S__LANG_LEXER_OPERATOR_SHL,
+	S__LANG_LEXER_OPERATOR_SHR,
+	S__LANG_LEXER_OPERATOR_OR,
+	S__LANG_LEXER_OPERATOR_XOR,
+	S__LANG_LEXER_OPERATOR_AND,
+	S__LANG_LEXER_OPERATOR_NOT,
+	S__LANG_LEXER_OPERATOR_LOGIC_OR,
+	S__LANG_LEXER_OPERATOR_LOGIC_XOR,
+	S__LANG_LEXER_OPERATOR_LOGIC_AND,
+	S__LANG_LEXER_OPERATOR_LOGIC_NOT,
+	S__LANG_LEXER_OPERATOR_LT,
+	S__LANG_LEXER_OPERATOR_GT,
+	S__LANG_LEXER_OPERATOR_LE,
+	S__LANG_LEXER_OPERATOR_GE,
+	S__LANG_LEXER_OPERATOR_EQ,
+	S__LANG_LEXER_OPERATOR_NE,
+	S__LANG_LEXER_OPERATOR_ASSIGN,
+	S__LANG_LEXER_OPERATOR_OPEN_BRACE,
+	S__LANG_LEXER_OPERATOR_CLOSE_BRACE,
+	S__LANG_LEXER_OPERATOR_OPEN_PARENTH,
+	S__LANG_LEXER_OPERATOR_CLOSE_PARENTH,
+	S__LANG_LEXER_OPERATOR_OPEN_BRACKET,
+	S__LANG_LEXER_OPERATOR_CLOSE_BRACKET,
+	S__LANG_LEXER_OPERATOR_AT,
+	S__LANG_LEXER_OPERATOR_HASH,
+	S__LANG_LEXER_OPERATOR_DOT,
+	S__LANG_LEXER_OPERATOR_COMMA,
+	S__LANG_LEXER_OPERATOR_COLON,
+	S__LANG_LEXER_OPERATOR_DOLLAR,
+	S__LANG_LEXER_OPERATOR_QUESTION,
+	S__LANG_LEXER_OPERATOR_SEMICOLON
+};
+
+struct s__lang_lexer_token {
+	int op;
+	uint64_t lineno;
+	uint64_t column;
+	union {
+		double r;
+		const char *s;
+		struct s__int256 i;
+		struct s__uint256 u;
+	} val;
+};
+
+typedef struct s__lang_lexer *s__lang_lexer_t;
+
+s__lang_lexer_t s__lang_lexer_open(const char *pathname);
+
+void s__lang_lexer_close(s__lang_lexer_t lexer);
+
+struct s__lang_lexer_token *s__lang_lexer_lookup(s__lang_lexer_t lexer,
+						 uint64_t i);
+
+uint64_t s__lang_lexer_size(s__lang_lexer_t lexer);
+
+const char *s__lang_lexer_pathname(s__lang_lexer_t lexer);
+
+#endif /* _S_LANG_LEXER_H_ */
