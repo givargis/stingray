@@ -39,7 +39,7 @@ check(struct s__index_ternary *ternary, uint64_t n)
 			return -1;
 		}
 		(*((void **)chunk)) = ternary->chunk; /* link */
-		ternary->size = sizeof (void *);
+		ternary->size = sizeof (struct node);
 		ternary->chunk = chunk;
 	}
 	return 0;
