@@ -108,7 +108,7 @@ struct s__lang_lexer_token {
 	uint64_t column;
 	union {
 		int c;               /* S__LANG_LEXER_CHAR */
-		double r;            /* S__LANG_LEXER_REAL */
+		s__real r;           /* S__LANG_LEXER_REAL */
 		const char *s;       /* S__LANG_LEXER_STRING/IDENTIFIER */
 		struct s__int256 i;  /* S__LANG_LEXER_INT */
 		struct s__uint256 u; /* S__LANG_LEXER_UINT */

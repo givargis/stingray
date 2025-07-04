@@ -21,7 +21,7 @@ struct s__json_node {
 	} op;
 	union {
 		int bool;
-		double number;
+		s__real number;
 		const char *string;
 		struct s__json_node_array {
 			struct s__json_node *node;

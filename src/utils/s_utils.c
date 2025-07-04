@@ -43,6 +43,7 @@ s__utils_bist(void)
 	TEST(s__bitset_bist, "bitset");
 	TEST(s__buf_bist, "buf");
 	TEST(s__ec_bist, "ec");
+	TEST(s__fft_bist, "fft");
 	TEST(s__hash_bist, "hash");
 	TEST(s__int256_bist, "int256");
 	TEST(s__json_bist, "json");

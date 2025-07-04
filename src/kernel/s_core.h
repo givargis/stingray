@@ -21,6 +21,8 @@
 
 #define S__INLINE static __inline__
 
+#define S__PI ( (s__real)3.14159265358979323846264338327950288 )
+
 #define S__MIN(a,b) ( ((a) < (b)) ? (a) : (b) )
 #define S__MAX(a,b) ( ((a) > (b)) ? (a) : (b) )
 #define S__DUP(a,b) ( (0 == ((a) % (b))) ? ((a) / (b)) : ((a) / (b) + 1) )
@@ -76,6 +78,13 @@ enum {
 	S__ERR_NETWORK_ADDRESS,
 	S__ERR_NETWORK_CONNECT,
 	S__ERR_NETWORK_INTERFACE
+};
+
+typedef double s__real;
+
+struct s__complex {
+	s__real r;
+	s__real i;
 };
 
 void s__core_init(int notrace);

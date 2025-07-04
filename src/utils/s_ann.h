@@ -15,13 +15,13 @@ s__ann_t s__ann_open(int input, int output, int hidden, int layers);
 
 void s__ann_close(s__ann_t ann);
 
-const double *s__ann_activate(s__ann_t ann, const double *x);
+const s__real *s__ann_activate(s__ann_t ann, const s__real *x);
 
-double s__ann_train(s__ann_t ann,
-		    const double *x,
-		    const double *y,
-		    double eta,
-		    int k);
+s__real s__ann_train(s__ann_t ann,
+		     const s__real *x,
+		     const s__real *y,
+		     s__real eta,
+		     int k);
 
 int s__ann_bist(void);
 

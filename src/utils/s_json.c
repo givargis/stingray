@@ -48,7 +48,7 @@ struct s__json {
 		} op;
 		union {
 			int bool;
-			double number;
+			s__real number;
 			const char *string;
 		} u;
 	} token;
@@ -137,7 +137,7 @@ eat_string(char *s)
 static void
 forward(struct s__json *json)
 {
-	double number;
+	s__real number;
 	char *s, *e;
 
 	s = json->curr;
@@ -210,7 +210,7 @@ forward(struct s__json *json)
 		else if (('-' == (*s)) ||
 			 ('.' == (*s)) ||
 			 isdigit((unsigned char)(*s))) {
-			number = strtod(s, &e);
+			number = (s__real)strtod(s, &e);
 			if (e == s) {
 				TRACE(json, "erroneous number");
 				return;

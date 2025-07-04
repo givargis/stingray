@@ -11,19 +11,19 @@ struct s__ann {
 	int output;
 	int hidden;
 	int layers;
-	double error;
+	s__real error;
 	struct {
-		double *w;
-		double *b;
-		double *a_;
-		double *d_;
-		double *w_;
-		double *b_;
+		s__real *w;
+		s__real *b;
+		s__real *a_;
+		s__real *d_;
+		s__real *w_;
+		s__real *b_;
 	} *net;
 };
 
 static void
-mac1(double *z, const double *a, const double *b, int n, int m)
+mac1(s__real *z, const s__real *a, const s__real *b, int n, int m)
 {
 	int i, j;
 
@@ -36,7 +36,7 @@ mac1(double *z, const double *a, const double *b, int n, int m)
 }
 
 static void
-mac2(double *z, const double *a, const double *b, int n, int m)
+mac2(s__real *z, const s__real *a, const s__real *b, int n, int m)
 {
 	int i, j;
 
@@ -49,7 +49,7 @@ mac2(double *z, const double *a, const double *b, int n, int m)
 }
 
 static void
-mac3(double *za, const double *b, const double *c, int n, int m)
+mac3(s__real *za, const s__real *b, const s__real *c, int n, int m)
 {
 	int i, j;
 
@@ -61,7 +61,7 @@ mac3(double *za, const double *b, const double *c, int n, int m)
 }
 
 static void
-mac4(double *za, const double *b, double s, int n)
+mac4(s__real *za, const s__real *b, s__real s, int n)
 {
 	int i;
 
@@ -71,7 +71,7 @@ mac4(double *za, const double *b, double s, int n)
 }
 
 static void
-add(double *za, const double *b, int n)
+add(s__real *za, const s__real *b, int n)
 {
 	int i;
 
@@ -81,7 +81,7 @@ add(double *za, const double *b, int n)
 }
 
 static void
-sub(double *z, const double *a, const double *b, int n)
+sub(s__real *z, const s__real *a, const s__real *b, int n)
 {
 	int i;
 
@@ -91,7 +91,7 @@ sub(double *z, const double *a, const double *b, int n)
 }
 
 static void
-relu(double *za, int n)
+relu(s__real *za, int n)
 {
 	int i;
 
@@ -103,7 +103,7 @@ relu(double *za, int n)
 }
 
 static void
-relud(double *za, const double *b, int n)
+relud(s__real *za, const s__real *b, int n)
 {
 	int i;
 
@@ -130,7 +130,7 @@ static void
 randomize(struct s__ann *ann)
 {
 	int i, l, n, m;
-	double a, b;
+	s__real a, b;
 
 	for (l=1; l<ann->layers; ++l) {
 		n = size(ann, l);
@@ -138,13 +138,14 @@ randomize(struct s__ann *ann)
 		a = -sqrt(6.0 / (n * m)) * 1.0;
 		b = +sqrt(6.0 / (n * m)) * 2.0;
 		for (i=0; i<(n*m); ++i) {
-			ann->net[l].w[i] = a + (rand() / (double)RAND_MAX) * b;
+			ann->net[l].w[i]  = a;
+			ann->net[l].w[i] += (rand() / (s__real)RAND_MAX) * b;
 		}
 	}
 }
 
 static void
-activate_(struct s__ann *ann, const double *x)
+activate_(struct s__ann *ann, const s__real *x)
 {
 	int l, n, m;
 
@@ -170,7 +171,7 @@ activate_(struct s__ann *ann, const double *x)
 }
 
 static void
-backprop_(struct s__ann *ann, const double *y)
+backprop_(struct s__ann *ann, const s__real *y)
 {
 	int i, l, n, m;
 
@@ -318,8 +319,8 @@ s__ann_close(s__ann_t ann)
 	S__FREE(ann);
 }
 
-const double *
-s__ann_activate(s__ann_t ann, const double *x)
+const s__real *
+s__ann_activate(s__ann_t ann, const s__real *x)
 {
 	assert( ann );
 	assert( x );
@@ -328,11 +329,11 @@ s__ann_activate(s__ann_t ann, const double *x)
 	return ann->net[ann->layers - 1].a_;
 }
 
-double
+s__real
 s__ann_train(s__ann_t ann,
-	     const double *x,
-	     const double *y,
-	     double eta,
+	     const s__real *x,
+	     const s__real *y,
+	     s__real eta,
 	     int k)
 {
 	int i, l, n, m;

@@ -295,7 +295,7 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 {
 	struct s__lang_lexer_token *token;
 	char *b, *e;
-	double r;
+	s__real r;
 
 	/* int/uint (hex) */
 
@@ -349,7 +349,7 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 		    ('e' == (*s)) ||
 		    ('E' == (*s))) {
 			errno = 0;
-			r = strtod(b, &e);
+			r = (s__real)strtod(b, &e);
 			if ((EINVAL == errno) || (ERANGE == errno)) {
 				TRACE(lexer, "invalid real value", "");
 				return NULL;

@@ -120,7 +120,7 @@ int
 s__hash_bist(void)
 {
 	uint64_t i, j, n, len, hash;
-	double stats[64];
+	s__real stats[64];
 	char buf[128];
 
 	n = 10000;

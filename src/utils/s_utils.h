@@ -13,6 +13,7 @@
 #include "s_bitset.h"
 #include "s_buf.h"
 #include "s_ec.h"
+#include "s_fft.h"
 #include "s_hash.h"
 #include "s_int256.h"
 #include "s_json.h"
