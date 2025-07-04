@@ -7,13 +7,13 @@
 #include "s_lang_map.h"
 #include "s_lang_lexer.h"
 
-#define TRACE(l,m)					\
+#define TRACE(l,m,x)					\
 	do {						\
-		s__log("error: %s:%lu:%lu: %s",		\
+		s__log("error: %s:%lu:%lu: " m,		\
 		       (l)->pathname,			\
 		       (unsigned long)(l)->lineno,	\
 		       (unsigned long)(l)->column,	\
-		       (m));				\
+		       (x));				\
 		S__TRACE(S__ERR_SYNTAX);		\
 	}						\
 	while (0)
@@ -59,6 +59,64 @@ is_identifier(const char *b, const char *e)
 		return 1;
 	}
 	return 0;
+}
+
+static int
+hexval(int c)
+{
+	c = tolower(c);
+	if (isdigit(c)) {
+		return c - '0';
+	}
+	if (('a' <= c) && ('f' >= c)) {
+		return c - 'a' + 10;
+	}
+	return -1;
+}
+
+static int
+charval(const char *s, int *c)
+{
+	int i, v;
+
+	(*c) = -1;
+	if ('\\' == (*s)) {
+		switch (*(++s)) {
+		case 'a' : (*c) = '\a'; ++s; break;
+		case 'b' : (*c) = '\b'; ++s; break;
+		case 'f' : (*c) = '\f'; ++s; break;
+		case 'n' : (*c) = '\n'; ++s; break;
+		case 'r' : (*c) = '\r'; ++s; break;
+		case 't' : (*c) = '\t'; ++s; break;
+		case 'v' : (*c) = '\v'; ++s; break;
+		case '\\': (*c) = '\\'; ++s; break;
+		case '\'': (*c) = '\''; ++s; break;
+		case '\"': (*c) = '\"'; ++s; break;
+		case '\?': (*c) = '\?'; ++s; break;
+		case 'x':
+			++s;
+			(*c) = 0;
+			for (i=0; i<8; ++i,++s) {
+				if (0 > (v = hexval((unsigned char)*s))) {
+					break;
+				}
+				(*c) = (*c) * 16 + v;
+			}
+			break;
+		default:
+			(*c) = 0;
+			for (i=0; i<3; ++i,++s) {
+				if (('0' > (*s)) || ('7' < (*s))) {
+					break;
+				}
+				(*c) = (*c) * 8 + (int)(*s) - '0';
+			}
+		}
+	}
+	else if ('\0' != (*s)) {
+		(*c) = (int)(*(s++));
+	}
+	return ((0 > (*c)) || ('\0' != (*s))) ? -1 : 0;
 }
 
 static struct s__lang_lexer_token *
@@ -109,7 +167,7 @@ eat_comment(struct s__lang_lexer *lexer, char *s)
 			lexer->column  = 0;
 		}
 		else if (('/' == s[0]) && ('*' == s[1])) {
-			TRACE(lexer, "'/*' within block comment");
+			TRACE(lexer, "'/*' within block comment", "");
 			return NULL;
 		}
 		else if (('*' == s[0]) && ('/' == s[1])) {
@@ -123,7 +181,7 @@ eat_comment(struct s__lang_lexer *lexer, char *s)
 		++lexer->column;
 		++s;
 	}
-	TRACE(lexer, "unterminated comment");
+	TRACE(lexer, "unterminated comment", "");
 	return NULL;
 }
 
@@ -191,7 +249,7 @@ eat_string(struct s__lang_lexer *lexer, char *s, char delim)
 			++s;
 		}
 		else if ('\n' == (*s)) {
-			TRACE(lexer, "missing terminating character");
+			TRACE(lexer, "missing terminating character", "");
 			return NULL;
 		}
 		++lexer->column;
@@ -204,12 +262,32 @@ static int
 process_string(struct s__lang_lexer *lexer, const char *b, const char *e)
 {
 	struct s__lang_lexer_token *token;
+	const char *s;
 
-	if (!(token = mktoken(lexer, S__LANG_LEXER_STRING, e - b)) ||
-	    !(token->val.s = strdupl(b, e))) {
+	if (!(s = strdupl(b + 1, e - 1))) {
 		S__TRACE(0);
 		return -1;
 	}
+	if ('\'' == (*b)) {
+		if (!(token = mktoken(lexer, S__LANG_LEXER_CHAR, e - b))) {
+			S__TRACE(0);
+			return -1;
+		}
+		if (charval(s, &token->u.c)) {
+			TRACE(lexer, "invalid character literal '%s'", s);
+			S__FREE(s);
+			return -1;
+		}
+		S__FREE(s);
+	}
+	else {
+		if (!(token = mktoken(lexer, S__LANG_LEXER_STRING, e - b))) {
+			S__TRACE(0);
+			return -1;
+		}
+		token->u.s = s;
+	}
+	printf("%d %d\n", token->op, token->u.c);
 	return 0;
 }
 
@@ -242,8 +320,8 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 				S__TRACE(0);
 				return NULL;
 			}
-			if (s__uint256_init(&token->val.u, s)) {
-				TRACE(lexer, "invalid integer");
+			if (s__uint256_init(&token->u.u, s)) {
+				TRACE(lexer, "invalid integer", "");
 				S__FREE(s);
 				return NULL;
 			}
@@ -254,8 +332,8 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 				S__TRACE(0);
 				return NULL;
 			}
-			if (s__int256_init(&token->val.i, s)) {
-				TRACE(lexer, "invalid integer");
+			if (s__int256_init(&token->u.i, s)) {
+				TRACE(lexer, "invalid integer", "");
 				S__FREE(s);
 				return NULL;
 			}
@@ -274,14 +352,14 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 			errno = 0;
 			r = strtod(b, &e);
 			if ((EINVAL == errno) || (ERANGE == errno)) {
-				TRACE(lexer, "invalid real value");
+				TRACE(lexer, "invalid real value", "");
 				return NULL;
 			}
 			if (!(token = mktoken(lexer, S__LANG_LEXER_REAL, 0))) {
 				S__TRACE(0);
 				return NULL;
 			}
-			token->val.r = r;
+			token->u.r = r;
 			return e;
 		}
 		if (!isdigit((unsigned char)(*s))) {
@@ -304,8 +382,8 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 			S__TRACE(0);
 			return NULL;
 		}
-		if (s__uint256_init(&token->val.u, s)) {
-			TRACE(lexer, "invalid integer");
+		if (s__uint256_init(&token->u.u, s)) {
+			TRACE(lexer, "invalid integer", "");
 			S__FREE(s);
 			return NULL;
 		}
@@ -316,8 +394,8 @@ process_numeric(struct s__lang_lexer *lexer, char *s)
 			S__TRACE(0);
 			return NULL;
 		}
-		if (s__int256_init(&token->val.i, s)) {
-			TRACE(lexer, "invalid integer");
+		if (s__int256_init(&token->u.i, s)) {
+			TRACE(lexer, "invalid integer", "");
 			S__FREE(s);
 			return NULL;
 		}
@@ -343,13 +421,13 @@ process(struct s__lang_lexer *lexer, const char *b, const char *e)
 			if (!(token = mktoken(lexer,
 					      S__LANG_LEXER_IDENTIFIER,
 					      e - b)) ||
-			    !(token->val.s = strdupl(b, e))) {
+			    !(token->u.s = strdupl(b, e))) {
 				S__TRACE(0);
 				return -1;
 			}
 		}
 		else {
-			TRACE(lexer, "unrecognized character");
+			TRACE(lexer, "unrecognized character", "");
 			return -1;
 		}
 	}
@@ -599,11 +677,9 @@ s__lang_lexer_close(s__lang_lexer_t lexer)
 		if (lexer->tokens.tokens) {
 			for (i=0; i<lexer->tokens.size; ++i) {
 				token = &lexer->tokens.tokens[i];
-				if (S__LANG_LEXER_IDENTIFIER == token->op) {
-					S__FREE(token->val.s);
-				}
-				if (S__LANG_LEXER_STRING == token->op) {
-					S__FREE(token->val.s);
+				if ((S__LANG_LEXER_STRING == token->op) ||
+				    (S__LANG_LEXER_IDENTIFIER == token->op)) {
+					S__FREE(token->u.s);
 				}
 			}
 		}

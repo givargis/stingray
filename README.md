@@ -1,6 +1,4 @@
-# stingray
-
-# Packages
+## Packages
 
 ```
 $ sudo apt-get update

@@ -107,11 +107,12 @@ struct s__lang_lexer_token {
 	uint64_t lineno;
 	uint64_t column;
 	union {
-		double r;
-		const char *s;
-		struct s__int256 i;
-		struct s__uint256 u;
-	} val;
+		int c;               /* S__LANG_LEXER_CHAR */
+		double r;            /* S__LANG_LEXER_REAL */
+		const char *s;       /* S__LANG_LEXER_STRING/IDENTIFIER */
+		struct s__int256 i;  /* S__LANG_LEXER_INT */
+		struct s__uint256 u; /* S__LANG_LEXER_UINT */
+	} u;
 };
 
 typedef struct s__lang_lexer *s__lang_lexer_t;
@@ -120,8 +121,8 @@ s__lang_lexer_t s__lang_lexer_open(const char *pathname);
 
 void s__lang_lexer_close(s__lang_lexer_t lexer);
 
-const struct s__lang_lexer_token *s__lang_lexer_lookup(s__lang_lexer_t lexer,
-						       uint64_t i);
+const struct s__lang_lexer_token *
+s__lang_lexer_lookup(s__lang_lexer_t lexer, uint64_t i);
 
 uint64_t s__lang_lexer_size(s__lang_lexer_t lexer);
 
