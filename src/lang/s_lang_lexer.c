@@ -287,7 +287,6 @@ process_string(struct s__lang_lexer *lexer, const char *b, const char *e)
 		}
 		token->u.s = s;
 	}
-	printf("%d %d\n", token->op, token->u.c);
 	return 0;
 }
 
