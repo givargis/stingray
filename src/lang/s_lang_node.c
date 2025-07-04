@@ -55,7 +55,7 @@ s__lang_node_allocate(s__lang_node_t node_)
 			S__TRACE(0);
 			return NULL;
 		}
-		(*((void **)chunk)) = node_->chunk;
+		(*((void **)chunk)) = node_->chunk; /* link */
 		node_->size = sizeof (struct s__lang_node *);
 		node_->chunk = chunk;
 	}
@@ -96,12 +96,4 @@ const char * const S__LANG_NODE_STR[] = {
 	"EXPR_COND",
 	/*-*/
 	"END"
-};
-
-const char * const S__LANG_NODE_TYPE_STR[] = {
-	"",
-	"INT",
-	"UINT",
-	"REAL",
-	"BOOL"
 };

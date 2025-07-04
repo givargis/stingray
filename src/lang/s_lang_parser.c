@@ -42,7 +42,7 @@ struct s__lang_parser {
 	struct s__lang_node *root; /* ref */
 };
 
-static struct s__lang_lexer_token *
+const static struct s__lang_lexer_token *
 next(const struct s__lang_parser *parser)
 {
 	if (parser->i < parser->n) {
@@ -54,7 +54,7 @@ next(const struct s__lang_parser *parser)
 static int
 match(const struct s__lang_parser *parser, int op)
 {
-	struct s__lang_lexer_token *token;
+	const struct s__lang_lexer_token *token;
 
 	if ((token = next(parser)) && (op == token->op)) {
 		return 1;
@@ -96,7 +96,6 @@ static struct s__lang_node *expr_list(struct s__lang_parser *parser);
  * expr_primary : INT
  *              | UINT
  *              | REAL
- *              | BOOL
  *              | IDENTIFIER
  *              | IDENTIFIER '(' expr_list ')'
  *              | '(' expr ')'
@@ -106,34 +105,13 @@ static struct s__lang_node *
 expr_primary(struct s__lang_parser *parser)
 {
 	struct s__lang_node *node;
-	char val[S__UINT256_STR_LEN];
 
 	node = NULL;
 	if (match(parser, S__LANG_LEXER_INT) ||
 	    match(parser, S__LANG_LEXER_UINT) ||
-	    match(parser, S__LANG_LEXER_REAL) ||
-	    match(parser, S__LANG_LEXER_BOOL)) {
+	    match(parser, S__LANG_LEXER_REAL)) {
 		MKN(parser, node, S__LANG_NODE_EXPR_LITERAL);
-		node->type  = node->token->op;
-		node->type -= S__LANG_LEXER_INT;
-		node->type += S__LANG_NODE_TYPE_INT;
 		forward(parser);
-		if ((S__LANG_NODE_TYPE_INT == node->type) &&
-		    (node->token->val.i.hh ||
-		     node->token->val.i.hl ||
-		     node->token->val.i.lh)) {
-			s__int256_dec(&node->token->val.i, val);
-			TRACE(parser, "out of bound literal INT '%s'", val);
-			return NULL;
-		}
-		if ((S__LANG_NODE_TYPE_UINT == node->type) &&
-		    (node->token->val.u.hh ||
-		     node->token->val.u.hl ||
-		     node->token->val.u.lh)) {
-			s__int256_dec(&node->token->val.u, val);
-			TRACE(parser, "out of bound literal UINT '%s'", val);
-			return NULL;
-		}
 	}
 	else if (match(parser, S__LANG_LEXER_IDENTIFIER)) {
 		MKN(parser, node, S__LANG_NODE_EXPR_VARIABLE);

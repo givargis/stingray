@@ -42,18 +42,9 @@ enum {
 	S__LANG_NODE_END
 };
 
-enum {
-	S__LANG_NODE_TYPE_,
-	S__LANG_NODE_TYPE_INT,
-	S__LANG_NODE_TYPE_UINT,
-	S__LANG_NODE_TYPE_REAL,
-	S__LANG_NODE_TYPE_BOOL
-};
-
 struct s__lang_node {
 	int id;
 	int op;
-	int type;
 	struct s__lang_node *cond;
 	struct s__lang_node *left;
 	struct s__lang_node *right;
@@ -69,6 +60,5 @@ void s__lang_node_close(s__lang_node_t node);
 struct s__lang_node *s__lang_node_allocate(s__lang_node_t node);
 
 extern const char * const S__LANG_NODE_STR[];
-extern const char * const S__LANG_NODE_TYPE_STR[];
 
 #endif /* _S_LANG_NODE_H_ */

@@ -338,14 +338,6 @@ process(struct s__lang_lexer *lexer, const char *b, const char *e)
 				S__TRACE(0);
 				return -1;
 			}
-			else if (S__LANG_LEXER_KEYWORD_FALSE == op) {
-				token->op = S__LANG_LEXER_BOOL;
-				S__UINT256_SET(&token->val.u, 0);
-			}
-			else if (S__LANG_LEXER_KEYWORD_TRUE == op) {
-				token->op = S__LANG_LEXER_BOOL;
-				S__UINT256_SET(&token->val.u, 1);
-			}
 		}
 		else if (is_identifier(b, e)) {
 			if (!(token = mktoken(lexer,
@@ -484,49 +476,89 @@ configure(struct s__lang_lexer *lexer)
 	s__lang_map_t map;
 
 	map = lexer->map;
-	I_(map, "true",      S__LANG_LEXER_KEYWORD_TRUE);
-	I_(map, "false",     S__LANG_LEXER_KEYWORD_FALSE);
-	I_(map, "int",       S__LANG_LEXER_KEYWORD_INT);
-	I_(map, "uint",      S__LANG_LEXER_KEYWORD_UINT);
-	I_(map, "real",      S__LANG_LEXER_KEYWORD_REAL);
-	I_(map, "bool",      S__LANG_LEXER_KEYWORD_BOOL);
+	I_(map, "auto",     S__LANG_LEXER_KEYWORD_AUTO);
+	I_(map, "break",    S__LANG_LEXER_KEYWORD_BREAK);
+	I_(map, "case",     S__LANG_LEXER_KEYWORD_CASE);
+	I_(map, "char",     S__LANG_LEXER_KEYWORD_CHAR);
+	I_(map, "const",    S__LANG_LEXER_KEYWORD_CONST);
+	I_(map, "continue", S__LANG_LEXER_KEYWORD_CONTINUE);
+	I_(map, "default",  S__LANG_LEXER_KEYWORD_DEFAULT);
+	I_(map, "do",       S__LANG_LEXER_KEYWORD_DO);
+	I_(map, "double",   S__LANG_LEXER_KEYWORD_DOUBLE);
+	I_(map, "else",     S__LANG_LEXER_KEYWORD_ELSE);
+	I_(map, "enum",     S__LANG_LEXER_KEYWORD_ENUM);
+	I_(map, "extern",   S__LANG_LEXER_KEYWORD_EXTERN);
+	I_(map, "float",    S__LANG_LEXER_KEYWORD_FLOAT);
+	I_(map, "for",      S__LANG_LEXER_KEYWORD_FOR);
+	I_(map, "goto",     S__LANG_LEXER_KEYWORD_GOTO);
+	I_(map, "if",       S__LANG_LEXER_KEYWORD_IF);
+	I_(map, "int",      S__LANG_LEXER_KEYWORD_INT);
+	I_(map, "long",     S__LANG_LEXER_KEYWORD_LONG);
+	I_(map, "register", S__LANG_LEXER_KEYWORD_REGISTER);
+	I_(map, "return",   S__LANG_LEXER_KEYWORD_RETURN);
+	I_(map, "short",    S__LANG_LEXER_KEYWORD_SHORT);
+	I_(map, "signed",   S__LANG_LEXER_KEYWORD_SIGNED);
+	I_(map, "sizeof",   S__LANG_LEXER_KEYWORD_SIZEOF);
+	I_(map, "static",   S__LANG_LEXER_KEYWORD_STATIC);
+	I_(map, "struct",   S__LANG_LEXER_KEYWORD_STRUCT);
+	I_(map, "switch",   S__LANG_LEXER_KEYWORD_SWITCH);
+	I_(map, "typedef",  S__LANG_LEXER_KEYWORD_TYPEDEF);
+	I_(map, "union",    S__LANG_LEXER_KEYWORD_UNION);
+	I_(map, "unsigned", S__LANG_LEXER_KEYWORD_UNSIGNED);
+	I_(map, "void",     S__LANG_LEXER_KEYWORD_VOID);
+	I_(map, "volatile", S__LANG_LEXER_KEYWORD_VOLATILE);
+	I_(map, "while",    S__LANG_LEXER_KEYWORD_WHILE);
 	/*-*/
-	I_(map, "+",         S__LANG_LEXER_OPERATOR_ADD);
-	I_(map, "-",         S__LANG_LEXER_OPERATOR_SUB);
-	I_(map, "/",         S__LANG_LEXER_OPERATOR_DIV);
-	I_(map, "%",         S__LANG_LEXER_OPERATOR_MOD);
-	I_(map, "*",         S__LANG_LEXER_OPERATOR_MUL);
-	I_(map, "<<",        S__LANG_LEXER_OPERATOR_SHL);
-	I_(map, ">>",        S__LANG_LEXER_OPERATOR_SHR);
-	I_(map, "|",         S__LANG_LEXER_OPERATOR_OR);
-	I_(map, "^",         S__LANG_LEXER_OPERATOR_XOR);
-	I_(map, "&",         S__LANG_LEXER_OPERATOR_AND);
-	I_(map, "~",         S__LANG_LEXER_OPERATOR_NOT);
-	I_(map, "||",        S__LANG_LEXER_OPERATOR_LOGIC_OR);
-	I_(map, "^^",        S__LANG_LEXER_OPERATOR_LOGIC_XOR);
-	I_(map, "&&",        S__LANG_LEXER_OPERATOR_LOGIC_AND);
-	I_(map, "!",         S__LANG_LEXER_OPERATOR_LOGIC_NOT);
-	I_(map, "<",         S__LANG_LEXER_OPERATOR_LT);
-	I_(map, ">",         S__LANG_LEXER_OPERATOR_GT);
-	I_(map, "<=",        S__LANG_LEXER_OPERATOR_LE);
-	I_(map, ">=",        S__LANG_LEXER_OPERATOR_GE);
-	I_(map, "==",        S__LANG_LEXER_OPERATOR_EQ);
-	I_(map, "!=",        S__LANG_LEXER_OPERATOR_NE);
-	I_(map, "=",         S__LANG_LEXER_OPERATOR_ASSIGN);
-	I_(map, "{",         S__LANG_LEXER_OPERATOR_OPEN_BRACE);
-	I_(map, "}",         S__LANG_LEXER_OPERATOR_CLOSE_BRACE);
-	I_(map, "(",         S__LANG_LEXER_OPERATOR_OPEN_PARENTH);
-	I_(map, ")",         S__LANG_LEXER_OPERATOR_CLOSE_PARENTH);
-	I_(map, "[",         S__LANG_LEXER_OPERATOR_OPEN_BRACKET);
-	I_(map, "]",         S__LANG_LEXER_OPERATOR_CLOSE_BRACKET);
-	I_(map, "@",         S__LANG_LEXER_OPERATOR_AT);
-	I_(map, "#",         S__LANG_LEXER_OPERATOR_HASH);
-	I_(map, ".",         S__LANG_LEXER_OPERATOR_DOT);
-	I_(map, ",",         S__LANG_LEXER_OPERATOR_COMMA);
-	I_(map, ":",         S__LANG_LEXER_OPERATOR_COLON);
-	I_(map, "$",         S__LANG_LEXER_OPERATOR_DOLLAR);
-	I_(map, "?",         S__LANG_LEXER_OPERATOR_QUESTION);
-	I_(map, ";",         S__LANG_LEXER_OPERATOR_SEMICOLON);
+	I_(map, "+",        S__LANG_LEXER_OPERATOR_ADD);
+	I_(map, "-",        S__LANG_LEXER_OPERATOR_SUB);
+	I_(map, "*",        S__LANG_LEXER_OPERATOR_MUL);
+	I_(map, "/",        S__LANG_LEXER_OPERATOR_DIV);
+	I_(map, "%",        S__LANG_LEXER_OPERATOR_MOD);
+	I_(map, "<<",       S__LANG_LEXER_OPERATOR_SHL);
+	I_(map, ">>",       S__LANG_LEXER_OPERATOR_SHR);
+	I_(map, "|",        S__LANG_LEXER_OPERATOR_OR);
+	I_(map, "^",        S__LANG_LEXER_OPERATOR_XOR);
+	I_(map, "&",        S__LANG_LEXER_OPERATOR_AND);
+	I_(map, "~",        S__LANG_LEXER_OPERATOR_NOT);
+	I_(map, "||",       S__LANG_LEXER_OPERATOR_LOGIC_OR);
+	I_(map, "&&",       S__LANG_LEXER_OPERATOR_LOGIC_AND);
+	I_(map, "!",        S__LANG_LEXER_OPERATOR_LOGIC_NOT);
+	I_(map, "++",       S__LANG_LEXER_OPERATOR_INC);
+	I_(map, "--",       S__LANG_LEXER_OPERATOR_DEC);
+	I_(map, "<",        S__LANG_LEXER_OPERATOR_LT);
+	I_(map, ">",        S__LANG_LEXER_OPERATOR_GT);
+	I_(map, "<=",       S__LANG_LEXER_OPERATOR_LE);
+	I_(map, ">=",       S__LANG_LEXER_OPERATOR_GE);
+	I_(map, "==",       S__LANG_LEXER_OPERATOR_EQ);
+	I_(map, "!=",       S__LANG_LEXER_OPERATOR_NE);
+	I_(map, "+=",       S__LANG_LEXER_OPERATOR_ADDASN);
+	I_(map, "-=",       S__LANG_LEXER_OPERATOR_SUBASN);
+	I_(map, "*=",       S__LANG_LEXER_OPERATOR_MULASN);
+	I_(map, "/=",       S__LANG_LEXER_OPERATOR_DIVASN);
+	I_(map, "%=",       S__LANG_LEXER_OPERATOR_MODASN);
+	I_(map, "<<=",      S__LANG_LEXER_OPERATOR_SHLASN);
+	I_(map, ">>=",      S__LANG_LEXER_OPERATOR_SHRASN);
+	I_(map, "|=",       S__LANG_LEXER_OPERATOR_ORASN);
+	I_(map, "^=",       S__LANG_LEXER_OPERATOR_XORASN);
+	I_(map, "&=",       S__LANG_LEXER_OPERATOR_ANDASN);
+	I_(map, "=",        S__LANG_LEXER_OPERATOR_ASN);
+	I_(map, "{",        S__LANG_LEXER_OPERATOR_OPEN_BRACE);
+	I_(map, "}",        S__LANG_LEXER_OPERATOR_CLOSE_BRACE);
+	I_(map, "<%",       S__LANG_LEXER_OPERATOR_OPEN_BRACE);
+	I_(map, "%>",       S__LANG_LEXER_OPERATOR_CLOSE_BRACE);
+	I_(map, "(",        S__LANG_LEXER_OPERATOR_OPEN_PARENTH);
+	I_(map, ")",        S__LANG_LEXER_OPERATOR_CLOSE_PARENTH);
+	I_(map, "[",        S__LANG_LEXER_OPERATOR_OPEN_BRACKET);
+	I_(map, "]",        S__LANG_LEXER_OPERATOR_CLOSE_BRACKET);
+	I_(map, "<:",       S__LANG_LEXER_OPERATOR_OPEN_BRACKET);
+	I_(map, ":>",       S__LANG_LEXER_OPERATOR_CLOSE_BRACKET);
+	I_(map, ".",        S__LANG_LEXER_OPERATOR_DOT);
+	I_(map, ",",        S__LANG_LEXER_OPERATOR_COMMA);
+	I_(map, ":",        S__LANG_LEXER_OPERATOR_COLON);
+	I_(map, "->",       S__LANG_LEXER_OPERATOR_POINTER);
+	I_(map, "?",        S__LANG_LEXER_OPERATOR_QUESTION);
+	I_(map, ";",        S__LANG_LEXER_OPERATOR_SEMICOLON);
+	I_(map, "...",      S__LANG_LEXER_OPERATOR_DOTDOTDOT);
 }
 
 s__lang_lexer_t
@@ -583,7 +615,7 @@ s__lang_lexer_close(s__lang_lexer_t lexer)
 	S__FREE(lexer);
 }
 
-struct s__lang_lexer_token *
+const struct s__lang_lexer_token *
 s__lang_lexer_lookup(s__lang_lexer_t lexer, uint64_t i)
 {
 	assert( lexer );
