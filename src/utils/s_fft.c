@@ -67,7 +67,7 @@ void
 s__fft_forward(struct s__complex *signal, int n)
 {
 	assert( signal );
-	assert( n && (0 == (n % 2)) );
+	assert( n && (0 == (n & (n - 1))) );
 
 	fft(signal, signal + n, n);
 }
@@ -78,7 +78,7 @@ s__fft_inverse(struct s__complex *signal, int n)
 	int i;
 
 	assert( signal );
-	assert( n && (0 == (n % 2)) );
+	assert( n && (0 == (n & (n - 1))) );
 
 	for (i=0; i<n; ++i) {
 		signal[i].r /= n;
