@@ -21,9 +21,12 @@ compile(const char *arg)
 	s__lang_parser_t parser;
 	s__lang_lexer_t lexer;
 
-	parser = NULL;
-	if (!(lexer = s__lang_lexer_open(arg)) ||
-	    !(parser = s__lang_parser_open(lexer))) {
+	if (!(lexer = s__lang_lexer_open(arg))) {
+		S__TRACE(0);
+		return -1;
+	}
+	s__lang_lexer_print(lexer);
+	if (!(parser = s__lang_parser_open(lexer))) {
 		s__lang_lexer_close(lexer);
 		S__TRACE(0);
 		return -1;

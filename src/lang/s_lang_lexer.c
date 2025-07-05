@@ -714,3 +714,159 @@ s__lang_lexer_pathname(s__lang_lexer_t lexer)
 
 	return lexer->pathname;
 }
+
+int
+s__lang_lexer_print(s__lang_lexer_t lexer)
+{
+	const struct s__lang_lexer_token *token;
+	s__table_t table;
+	char buf[256];
+	uint64_t i;
+
+	assert( lexer );
+
+	if (!(table = s__table_open(s__lang_lexer_size(lexer) + 1, 4))) {
+		S__TRACE(0);
+		return -1;
+	}
+	s__table_insert(table, 0, 0, "lineno");
+	s__table_insert(table, 0, 1, "column");
+	s__table_insert(table, 0, 2, "op");
+	s__table_insert(table, 0, 3, "value");
+	for (i=0; i<s__lang_lexer_size(lexer); ++i) {
+		token = s__lang_lexer_lookup(lexer, i);
+		s__sprintf(buf,
+			   sizeof (buf),
+			   "%lu",
+			   (unsigned long)token->lineno);
+		s__table_insert(table, i + 1, 0, buf);
+		s__sprintf(buf,
+			   sizeof (buf),
+			   "%lu",
+			   (unsigned long)token->column);
+		s__table_insert(table, i + 1, 1, buf);
+		s__table_insert(table, i + 1, 2, S__LANG_LEXER_STR[token->op]);
+		if (S__LANG_LEXER_INT == token->op) {
+			s__int256_dec(&token->u.i, buf);
+			s__table_insert(table, i + 1, 3, buf);
+		}
+		else if (S__LANG_LEXER_UINT == token->op) {
+			s__uint256_dec(&token->u.u, buf);
+			s__table_insert(table, i + 1, 3, buf);
+		}
+		else if (S__LANG_LEXER_CHAR == token->op) {
+			s__sprintf(buf,
+				   sizeof (buf),
+				   "%d",
+				   token->u.c);
+			s__table_insert(table, i + 1, 3, buf);
+		}
+		else if (S__LANG_LEXER_REAL == token->op) {
+			s__sprintf(buf,
+				   sizeof (buf),
+				   "%a",
+				   token->u.r);
+			s__table_insert(table, i + 1, 3, buf);
+		}
+		else if ((S__LANG_LEXER_STRING == token->op) ||
+			 (S__LANG_LEXER_IDENTIFIER == token->op)) {
+			s__table_insert(table, i + 1, 3, token->u.s);
+		}
+	}
+	s__table_print(table);
+	s__table_close(table);
+	return 0;
+}
+
+const char * const S__LANG_LEXER_STR[] = {
+	"",
+	"EOF",
+	"INT",
+	"UINT",
+	"REAL",
+	"CHAR",
+	"STRING",
+	"IDENTIFIER",
+	/*-*/
+	"KEYWORD_",
+	"KEYWORD_AUTO",
+	"KEYWORD_BREAK",
+	"KEYWORD_CASE",
+	"KEYWORD_CHAR",
+	"KEYWORD_CONST",
+	"KEYWORD_CONTINUE",
+	"KEYWORD_DEFAULT",
+	"KEYWORD_DO",
+	"KEYWORD_DOUBLE",
+	"KEYWORD_ELSE",
+	"KEYWORD_ENUM",
+	"KEYWORD_EXTERN",
+	"KEYWORD_FLOAT",
+	"KEYWORD_FOR",
+	"KEYWORD_GOTO",
+	"KEYWORD_IF",
+	"KEYWORD_INT",
+	"KEYWORD_LONG",
+	"KEYWORD_REGISTER",
+	"KEYWORD_RETURN",
+	"KEYWORD_SHORT",
+	"KEYWORD_SIGNED",
+	"KEYWORD_SIZEOF",
+	"KEYWORD_STATIC",
+	"KEYWORD_STRUCT",
+	"KEYWORD_SWITCH",
+	"KEYWORD_TYPEDEF",
+	"KEYWORD_UNION",
+	"KEYWORD_UNSIGNED",
+	"KEYWORD_VOID",
+	"KEYWORD_VOLATILE",
+	"KEYWORD_WHILE",
+	/*-*/
+	"OPERATOR_",
+	"OPERATOR_ADD",
+	"OPERATOR_SUB",
+	"OPERATOR_MUL",
+	"OPERATOR_DIV",
+	"OPERATOR_MOD",
+	"OPERATOR_SHL",
+	"OPERATOR_SHR",
+	"OPERATOR_OR",
+	"OPERATOR_XOR",
+	"OPERATOR_AND",
+	"OPERATOR_NOT",
+	"OPERATOR_LOGIC_OR",
+	"OPERATOR_LOGIC_AND",
+	"OPERATOR_LOGIC_NOT",
+	"OPERATOR_INC",
+	"OPERATOR_DEC",
+	"OPERATOR_LT",
+	"OPERATOR_GT",
+	"OPERATOR_LE",
+	"OPERATOR_GE",
+	"OPERATOR_EQ",
+	"OPERATOR_NE",
+	"OPERATOR_ADDASN",
+	"OPERATOR_SUBASN",
+	"OPERATOR_MULASN",
+	"OPERATOR_DIVASN",
+	"OPERATOR_MODASN",
+	"OPERATOR_SHLASN",
+	"OPERATOR_SHRASN",
+	"OPERATOR_ORASN",
+	"OPERATOR_XORASN",
+	"OPERATOR_ANDASN",
+	"OPERATOR_ASN",
+	"OPERATOR_OPEN_BRACE",
+	"OPERATOR_CLOSE_BRACE",
+	"OPERATOR_OPEN_PARENTH",
+	"OPERATOR_CLOSE_PARENTH",
+	"OPERATOR_OPEN_BRACKET",
+	"OPERATOR_CLOSE_BRACKET",
+	"OPERATOR_DOT",
+	"OPERATOR_COMMA",
+	"OPERATOR_COLON",
+	"OPERATOR_POINTER",
+	"OPERATOR_QUESTION",
+	"OPERATOR_SEMICOLON",
+	"OPERATOR_DOTDOTDOT"
+};

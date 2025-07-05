@@ -15,10 +15,10 @@ s__table_t s__table_open(uint64_t rows, uint64_t cols);
 
 void s__table_close(s__table_t table);
 
-void s__table_assign(s__table_t table,
-		     uint64_t row,
-		     uint64_t col,
-		     const char *val);
+int s__table_insert(s__table_t table,
+		    uint64_t row,
+		    uint64_t col,
+		    const char *val);
 
 void s__table_print(s__table_t table);
 

@@ -128,4 +128,8 @@ uint64_t s__lang_lexer_size(s__lang_lexer_t lexer);
 
 const char *s__lang_lexer_pathname(s__lang_lexer_t lexer);
 
+int s__lang_lexer_print(s__lang_lexer_t lexer);
+
+extern const char * const S__LANG_LEXER_STR[];
+
 #endif /* _S_LANG_LEXER_H_ */

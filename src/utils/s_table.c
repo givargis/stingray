@@ -6,21 +6,14 @@
 
 #include "s_table.h"
 
+#define CELL(t,i,j) ( (t)->cells[(i) * (t)->cols + (j)] )
+
 struct s__table {
 	uint64_t rows;
 	uint64_t cols;
 	uint64_t *widths;
 	const char **cells;
 };
-
-static const char *
-cell(const struct s__table *table, uint64_t row, uint64_t col)
-{
-	const char *val;
-
-	val = table->cells[row * table->cols + col];
-	return val ? val : "";
-}
 
 s__table_t
 s__table_open(uint64_t rows, uint64_t cols)
@@ -66,7 +59,16 @@ s__table_open(uint64_t rows, uint64_t cols)
 void
 s__table_close(s__table_t table)
 {
+	uint64_t i, j;
+
 	if (table) {
+		if (table->cells) {
+			for (i=0; i<table->rows; ++i) {
+				for (j=0; j<table->cols; ++j) {
+					S__FREE(CELL(table, i, j));
+				}
+			}
+		}
 		S__FREE(table->cells);
 		S__FREE(table->widths);
 		memset(table, 0, sizeof (struct s__table));
@@ -74,14 +76,19 @@ s__table_close(s__table_t table)
 	S__FREE(table);
 }
 
-void
-s__table_assign(s__table_t table, uint64_t row, uint64_t col, const char *val)
+int
+s__table_insert(s__table_t table, uint64_t row, uint64_t col, const char *val)
 {
 	assert( table );
 	assert( row < table->rows );
 	assert( col < table->cols );
 
-	table->cells[row * table->cols + col] = val;
+	S__FREE(CELL(table, row, col));
+	if (!(table->cells[row * table->cols + col] = s__strdup(val))) {
+		S__TRACE(0);
+		return -1;
+	}
+	return 0;
 }
 
 void
@@ -96,7 +103,7 @@ s__table_print(s__table_t table)
 		for (i=0; i<table->rows; ++i) {
 			table->widths[j] =
 				S__MAX(table->widths[j],
-				       s__strlen(cell(table, i, j)));
+				       s__strlen(CELL(table, i, j)));
 		}
 	}
 	s__term_color(S__TERM_COLOR_MAGENTA);
@@ -113,7 +120,7 @@ s__table_print(s__table_t table)
 	for (j=0; j<table->cols; ++j) {
 		s__term_color(S__TERM_COLOR_CYAN);
 		sprintf(format, " %%%ds ", (int)table->widths[j]);
-		printf(format, cell(table, 0, j) ? cell(table, 0, j) : "");
+		printf(format, CELL(table, 0, j) ? CELL(table, 0, j) : "");
 		s__term_color(S__TERM_COLOR_MAGENTA);
 		s__term_bold();
 		printf("|");
@@ -132,8 +139,8 @@ s__table_print(s__table_t table)
 			s__term_reset();
 			sprintf(format, " %%%ds ", (int)table->widths[j]);
 			printf(format,
-			       cell(table, i, j) ?
-			       cell(table, i, j) : "");
+			       CELL(table, i, j) ?
+			       CELL(table, i, j) : "");
 			s__term_color(S__TERM_COLOR_MAGENTA);
 			s__term_bold();
 			printf("|");
