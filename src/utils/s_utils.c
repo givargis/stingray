@@ -49,6 +49,7 @@ s__utils_bist(void)
 	TEST(s__json_bist, "json");
 	TEST(s__sha3_bist, "sha3");
 	TEST(s__string_bist, "string");
+	TEST(s__table_bist, "table");
 	TEST(s__uint256_bist, "uint256");
 	printf("---=== UTILS BIST ===---\n\n");
 	return 0;

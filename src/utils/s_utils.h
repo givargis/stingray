@@ -19,6 +19,7 @@
 #include "s_json.h"
 #include "s_sha3.h"
 #include "s_string.h"
+#include "s_table.h"
 #include "s_uint256.h"
 
 void s__utils_init(void);
