@@ -8,8 +8,8 @@
 
 #define TRACE(p,m,x)							\
 	do {								\
-		if (!(p)->once) {					\
-			(p)->once = 1;					\
+		if (!(p)->error) {					\
+			(p)->error = 1;					\
 			s__log("error: %s:%lu:%lu: " m,			\
 			       s__lang_lexer_pathname((p)->lexer),	\
 			       (unsigned long)next((p))->lineno,	\
@@ -34,7 +34,7 @@
 
 struct s__lang_parser {
 	int id;
-	int once;
+	int error;
 	uint64_t i;
 	uint64_t n;
 	s__lang_node_t node;
@@ -45,7 +45,7 @@ struct s__lang_parser {
 const static struct s__lang_lexer_token *
 next(const struct s__lang_parser *parser)
 {
-	if (parser->i < parser->n) {
+	if (!parser->error && (parser->i < parser->n)) {
 		return s__lang_lexer_lookup(parser->lexer, parser->i);
 	}
 	return s__lang_lexer_lookup(parser->lexer, parser->n - 1);
@@ -71,24 +71,64 @@ forward(struct s__lang_parser *parser)
 }
 
 /**============================================================================
+ * (E0)  expr_arglist
  * (E1)  expr_primary
- * (E2)  expr_unary
- * (E3)  expr_multiplicative
- * (E4)  expr_additive
- * (E5)  expr_shift
- * (E6)  expr_relational
- * (E7)  expr_equality
- * (E8)  expr_and
- * (E9)  expr_xor
- * (E10) expr_or
- * (E11) expr_logic_and
- * (E12) expr_logic_xor_or
- * (E13) expr
- * (E14) expr_list
+ * (E2)  expr_postfix
+ * (E3)  expr_unary
+ * (E4)  expr_cast
+ * (E5)  expr_multiplicative
+ * (E6)  expr_additive
+ * (E7)  expr_shift
+ * (E8)  expr_relational
+ * (E9)  expr_equality
+ * (E10) expr_and
+ * (E11) expr_xor
+ * (E12) expr_or
+ * (E13) expr_logic_and
+ * (E14) expr_logic_xor_or
+ * (E15) expr
  *===========================================================================*/
 
 static struct s__lang_node *expr(struct s__lang_parser *parser);
-static struct s__lang_node *expr_list(struct s__lang_parser *parser);
+static struct s__lang_node *expr_cast(struct s__lang_parser *parser);
+static struct s__lang_node *type_name(struct s__lang_parser *parser);
+
+/**
+ * (E0)
+ *
+ * expr_arglist : expr { ',' expr } <<< expr -> expr_asn >>>
+ */
+
+static struct s__lang_node *
+expr_args(struct s__lang_parser *parser)
+{
+	struct s__lang_node *node, *node_, *head, *tail;
+	int mark;
+
+	mark = 0;
+	head = tail = NULL;
+	while ((node_ = expr(parser))) {
+		MKN(parser, node, S__LANG_NODE_EXPR_LIST);
+		node->cond = node_;
+		if (tail) {
+			tail->right = node;
+			tail = node;
+		}
+		else {
+			head = node;
+			tail = node;
+		}
+		if (!(mark = match(parser, S__LANG_LEXER_OPERATOR_COMMA))) {
+			break;
+		}
+		forward(parser);
+	}
+	if (mark) {
+		TRACE(parser, "dangling ','", "");
+		return NULL;
+	}
+	return head;
+}
 
 /**
  * (E1)
@@ -96,8 +136,9 @@ static struct s__lang_node *expr_list(struct s__lang_parser *parser);
  * expr_primary : INT
  *              | UINT
  *              | REAL
+ *              | CHAR
+ *              | STRING
  *              | IDENTIFIER
- *              | IDENTIFIER '(' expr_list ')'
  *              | '(' expr ')'
  */
 
@@ -109,24 +150,15 @@ expr_primary(struct s__lang_parser *parser)
 	node = NULL;
 	if (match(parser, S__LANG_LEXER_INT) ||
 	    match(parser, S__LANG_LEXER_UINT) ||
-	    match(parser, S__LANG_LEXER_REAL)) {
+	    match(parser, S__LANG_LEXER_REAL) ||
+	    match(parser, S__LANG_LEXER_CHAR) ||
+	    match(parser, S__LANG_LEXER_STRING)) {
 		MKN(parser, node, S__LANG_NODE_EXPR_LITERAL);
 		forward(parser);
 	}
 	else if (match(parser, S__LANG_LEXER_IDENTIFIER)) {
-		MKN(parser, node, S__LANG_NODE_EXPR_VARIABLE);
+		MKN(parser, node, S__LANG_NODE_EXPR_IDENTIFIER);
 		forward(parser);
-		if (match(parser, S__LANG_LEXER_OPERATOR_OPEN_PARENTH)) {
-			node->op = S__LANG_NODE_EXPR_FUNCTION;
-			forward(parser);
-			node->cond = expr_list(parser);
-			if (!match(parser,
-				   S__LANG_LEXER_OPERATOR_CLOSE_PARENTH)) {
-				TRACE(parser, "missing ')'", "");
-				return NULL;
-			}
-			forward(parser);
-		}
 	}
 	else if (match(parser, S__LANG_LEXER_OPERATOR_OPEN_PARENTH)) {
 		forward(parser);
@@ -146,8 +178,113 @@ expr_primary(struct s__lang_parser *parser)
 /**
  * (E2)
  *
- * expr_unary : [ '+' '-' '~' '!' ] expr_primary
- *            | expr_primary
+ * expr_postfix_ : '++' expr_postfix_
+ *               | '--' expr_postfix_
+ *               | '(' expr_args ')' expr_postfix_
+ *               | '[' expr ']' expr_postfix_
+ *               | '.' IDENTIFIER expr_postfix_
+ *               | '->' IDENTIFIER expr_postfix_
+ *               | <e>
+ *
+ * expr_postfix : expr_primary expr_postfix_
+ */
+
+static struct s__lang_node *
+expr_postfix_(struct s__lang_parser *parser, struct s__lang_node *left)
+{
+	struct s__lang_node *node;
+
+	node = left;
+	for (;;) {
+		if (match(parser, S__LANG_LEXER_OPERATOR_INC)) {
+			MKN(parser, node, S__LANG_NODE_EXPR_INC);
+			node->left = left;
+			forward(parser);
+		}
+		else if (match(parser, S__LANG_LEXER_OPERATOR_DEC)) {
+			MKN(parser, node, S__LANG_NODE_EXPR_DEC);
+			node->left = left;
+			forward(parser);
+		}
+		else if (match(parser, S__LANG_LEXER_OPERATOR_OPEN_PARENTH)) {
+			MKN(parser, node, S__LANG_NODE_EXPR_FUNCTION);
+			node->left = left;
+			forward(parser);
+			node->right = expr_args(parser);
+			if (!match(parser,
+				   S__LANG_LEXER_OPERATOR_CLOSE_PARENTH)) {
+				TRACE(parser, "missing ']'", "");
+				return NULL;
+			}
+			forward(parser);
+		}
+		else if (match(parser, S__LANG_LEXER_OPERATOR_OPEN_BRACKET)) {
+			MKN(parser, node, S__LANG_NODE_EXPR_ARRAY);
+			node->left = left;
+			forward(parser);
+			if (!(node->right = expr(parser))) {
+				TRACE(parser, "missing '[]' expression", "");
+				return NULL;
+			}
+			if (!match(parser,
+				   S__LANG_LEXER_OPERATOR_CLOSE_BRACKET)) {
+				TRACE(parser, "missing ']'", "");
+				return NULL;
+			}
+			forward(parser);
+		}
+		else if (match(parser, S__LANG_LEXER_OPERATOR_DOT)) {
+			MKN(parser, node, S__LANG_NODE_EXPR_REF);
+			node->left = left;
+			forward(parser);
+			if (!match(parser, S__LANG_LEXER_IDENTIFIER)) {
+				TRACE(parser, "missing identifier", "");
+				return NULL;
+			}
+			node->token = next(parser);
+			forward(parser);
+		}
+		else if (match(parser, S__LANG_LEXER_OPERATOR_POINTER)) {
+			MKN(parser, node, S__LANG_NODE_EXPR_PREF);
+			node->left = left;
+			forward(parser);
+			if (!match(parser, S__LANG_LEXER_IDENTIFIER)) {
+				TRACE(parser, "missing identifier", "");
+				return NULL;
+			}
+			node->token = next(parser);
+			forward(parser);
+		}
+		else {
+			break;
+		}
+		if (!(node = expr_postfix_(parser, node))) {
+			S__TRACE(0);
+			return NULL;
+		}
+	}
+	return node;
+}
+
+static struct s__lang_node *
+expr_postfix(struct s__lang_parser *parser)
+{
+	struct s__lang_node *node;
+
+	if (!(node = expr_primary(parser))) {
+		return NULL;
+	}
+	return expr_postfix_(parser, node);
+}
+
+/**
+ * (E3)
+ *
+ * expr_unary : [ '+' '-' '~' '!' '&' '*' ] expr_cast
+ *            | [ '++' '--' ] expr_unary
+ *            | SIZEOF expr_unary
+ *            | SIZEOF '(' type_name ')' <<< NOT IMPLEMENTED >>>
+ *            | exp_postfix
  */
 
 static struct s__lang_node *
@@ -158,7 +295,7 @@ expr_unary(struct s__lang_parser *parser)
 	node = NULL;
 	if (match(parser, S__LANG_LEXER_OPERATOR_ADD)) {
 		forward(parser);
-		if (!(node = expr_unary(parser))) {
+		if (!(node = expr_cast(parser))) {
 			TRACE(parser, "missing unary '+' operand", "");
 			return NULL;
 		}
@@ -166,7 +303,7 @@ expr_unary(struct s__lang_parser *parser)
 	else if (match(parser, S__LANG_LEXER_OPERATOR_SUB)) {
 		MKN(parser, node, S__LANG_NODE_EXPR_NEG);
 		forward(parser);
-		if (!(node->right = expr_unary(parser))) {
+		if (!(node->right = expr_cast(parser))) {
 			TRACE(parser, "missing unary '-' operand", "");
 			return NULL;
 		}
@@ -174,7 +311,7 @@ expr_unary(struct s__lang_parser *parser)
 	else if (match(parser, S__LANG_LEXER_OPERATOR_NOT)) {
 		MKN(parser, node, S__LANG_NODE_EXPR_NOT);
 		forward(parser);
-		if (!(node->right = expr_unary(parser))) {
+		if (!(node->right = expr_cast(parser))) {
 			TRACE(parser, "missing '~' operand", "");
 			return NULL;
 		}
@@ -182,24 +319,102 @@ expr_unary(struct s__lang_parser *parser)
 	else if (match(parser, S__LANG_LEXER_OPERATOR_LOGIC_NOT)) {
 		MKN(parser, node, S__LANG_NODE_EXPR_LOGIC_NOT);
 		forward(parser);
-		if (!(node->right = expr_unary(parser))) {
+		if (!(node->right = expr_cast(parser))) {
 			TRACE(parser, "missing '!' operand", "");
 			return NULL;
 		}
 	}
+	else if (match(parser, S__LANG_LEXER_OPERATOR_AND)) {
+		MKN(parser, node, S__LANG_NODE_EXPR_ADDRESS);
+		forward(parser);
+		if (!(node->right = expr_cast(parser))) {
+			TRACE(parser, "missing '&' operand", "");
+			return NULL;
+		}
+	}
+	else if (match(parser, S__LANG_LEXER_OPERATOR_MUL)) {
+		MKN(parser, node, S__LANG_NODE_EXPR_DEREF);
+		forward(parser);
+		if (!(node->right = expr_cast(parser))) {
+			TRACE(parser, "missing '*' operand", "");
+			return NULL;
+		}
+	}
+	else if (match(parser, S__LANG_LEXER_OPERATOR_INC)) {
+		MKN(parser, node, S__LANG_NODE_EXPR_INC);
+		forward(parser);
+		if (!(node->right = expr_unary(parser))) {
+			TRACE(parser, "missing '++' operand", "");
+			return NULL;
+		}
+	}
+	else if (match(parser, S__LANG_LEXER_OPERATOR_DEC)) {
+		MKN(parser, node, S__LANG_NODE_EXPR_DEC);
+		forward(parser);
+		if (!(node->right = expr_unary(parser))) {
+			TRACE(parser, "missing '--' operand", "");
+			return NULL;
+		}
+	}
+	else if (match(parser, S__LANG_LEXER_KEYWORD_SIZEOF)) {
+		MKN(parser, node, S__LANG_NODE_EXPR_SIZEOF);
+		forward(parser);
+		if (!(node->right = expr_unary(parser))) {
+			TRACE(parser, "missing '*' operand", "");
+			return NULL;
+		}
+	}
 	else {
-		node = expr_primary(parser);
+		node = expr_postfix(parser);
 	}
 	return node;
 }
 
 /**
- * (E3)
+ * (E4)
  *
- * expr_multiplicative_ : { [ '*' '/' '%' ] expr_unary expr_multiplicative_ }
+ * expr_cast : '(' type_name ')' expr_cast
+ *           | expr_unary
+ */
+
+static struct s__lang_node *
+expr_cast(struct s__lang_parser *parser)
+{
+	struct s__lang_node *node;
+	uint64_t checkpoint;
+
+	node = NULL;
+	if (match(parser, S__LANG_LEXER_OPERATOR_OPEN_PARENTH)) {
+		checkpoint = parser->i;
+		MKN(parser, node, S__LANG_NODE_EXPR_CAST);
+		forward(parser);
+		if (!(node->left = type_name(parser))) {
+			parser->i = checkpoint;
+			return NULL;
+		}
+		if (!match(parser, S__LANG_LEXER_OPERATOR_CLOSE_PARENTH)) {
+			TRACE(parser, "missing ')'", "");
+			return NULL;
+		}
+		forward(parser);
+		if (!(node->right = expr_cast(parser))) {
+			TRACE(parser, "missing cast operand", "");
+			return NULL;
+		}
+	}
+	else {
+		node = expr_unary(parser);
+	}
+	return node;
+}
+
+/**
+ * (E5)
+ *
+ * expr_multiplicative_ : { [ '*' '/' '%' ] expr_cast expr_multiplicative_ }
  *                      | <e>
  *
- * expr_multiplicative : expr_unary expr_multiplicative_
+ * expr_multiplicative : expr_cast expr_multiplicative_
  */
 
 static struct s__lang_node *
@@ -229,7 +444,7 @@ expr_multiplicative_(struct s__lang_parser *parser,
 		else {
 			break;
 		}
-		if (!(node->right = expr_unary(parser))) {
+		if (!(node->right = expr_cast(parser))) {
 			TRACE(parser,
 			      "missing '%s' operand",
 			      TBL[node->op - S__LANG_NODE_EXPR_MUL]);
@@ -248,14 +463,14 @@ expr_multiplicative(struct s__lang_parser *parser)
 {
 	struct s__lang_node *node;
 
-	if (!(node = expr_unary(parser))) {
+	if (!(node = expr_cast(parser))) {
 		return NULL;
 	}
 	return expr_multiplicative_(parser, node);
 }
 
 /**
- * (E4)
+ * (E6)
  *
  * expr_additive_ : { [ '+' '-' ] expr_multiplicative expr_additive_ }
  *                | <e>
@@ -310,7 +525,7 @@ expr_additive(struct s__lang_parser *parser)
 }
 
 /**
- * (E5)
+ * (E7)
  *
  * expr_shift_ : { [ '<<' '>>' ] expr_additive expr_shift_ }
  *             | <e>
@@ -365,7 +580,7 @@ expr_shift(struct s__lang_parser *parser)
 }
 
 /**
- * (E6)
+ * (E8)
  *
  * expr_relational_ : { [ '<' '>' '<=' '>=' ] expr_shift expr_relational_ }
  *                  | <e>
@@ -431,7 +646,7 @@ expr_relational(struct s__lang_parser *parser)
 }
 
 /**
- * (E7)
+ * (E9)
  *
  * expr_equality_ : { [ '==' '!=' ] expr_relational expr_equality_ }
  *                | <e>
@@ -486,7 +701,7 @@ expr_equality(struct s__lang_parser *parser)
 }
 
 /**
- * (E8)
+ * (E10)
  *
  * expr_and_ : { '&' expr_equality expr_and_ }
  *           | <e>
@@ -533,7 +748,7 @@ expr_and(struct s__lang_parser *parser)
 }
 
 /**
- * (E9)
+ * (E11)
  *
  * expr_xor_ : { '^' expr_and expr_xor_ }
  *           | <e>
@@ -580,7 +795,7 @@ expr_xor(struct s__lang_parser *parser)
 }
 
 /**
- * (E10)
+ * (E12)
  *
  * expr_or_ : { '|' expr_xor expr_or_ }
  *          | <e>
@@ -627,7 +842,7 @@ expr_or(struct s__lang_parser *parser)
 }
 
 /**
- * (E11)
+ * (E13)
  *
  * expr_logic_and_ : { '&&' expr_or expr_logic_and_ }
  *                 | <e>
@@ -674,7 +889,7 @@ expr_logic_and(struct s__lang_parser *parser)
 }
 
 /**
- * (E12)
+ * (E14)
  *
  * expr_logic_or_ : { '||' expr_logic_and expr_logic_or_ }
  *                | <e>
@@ -721,7 +936,7 @@ expr_logic_or(struct s__lang_parser *parser)
 }
 
 /**
- * (E13)
+ * (E15)
  *
  * expr : expr_logic_or { '?' expr ':' expr }?
  */
@@ -758,41 +973,17 @@ expr(struct s__lang_parser *parser)
 	return node;
 }
 
-/**
- * (D5)
- *
- * expr_list : expr { ',' expr }
- */
-
 static struct s__lang_node *
-expr_list(struct s__lang_parser *parser)
+type_name(struct s__lang_parser *parser)
 {
-	struct s__lang_node *node, *node_, *head, *tail;
-	int mark;
+	struct s__lang_node *node;
 
-	mark = 0;
-	head = tail = NULL;
-	while ((node_ = expr(parser))) {
-		MKN(parser, node, S__LANG_NODE_EXPR_LIST);
-		node->cond = node_;
-		if (tail) {
-			tail->right = node;
-			tail = node;
-		}
-		else {
-			head = node;
-			tail = node;
-		}
-		if (!(mark = match(parser, S__LANG_LEXER_OPERATOR_COMMA))) {
-			break;
-		}
+	node = NULL;
+	if (match(parser, S__LANG_LEXER_KEYWORD_INT)) {
+		MKN(parser, node, S__LANG_NODE_);
 		forward(parser);
 	}
-	if (mark) {
-		TRACE(parser, "dangling ','", "");
-		return NULL;
-	}
-	return head;
+	return node; /* FIX : IMPLEMENT */
 }
 
 /**============================================================================
@@ -805,7 +996,7 @@ top(struct s__lang_parser *parser)
 	struct s__lang_node *node;
 
 	if (!(node = expr(parser))) {
-		TRACE(parser, "no declarations in translation unit", "");
+		TRACE(parser, "syntax error", "");
 		return NULL;
 	}
 	if (!match(parser, S__LANG_LEXER_EOF)) {

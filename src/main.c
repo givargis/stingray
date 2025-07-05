@@ -9,19 +9,44 @@
 
 #define VERSION 100
 
-static int
-stage(void)
+static void
+print(const struct s__lang_node *node)
 {
-	return 0;
+	if (node) {
+		print(node->cond);
+		print(node->left);
+		print(node->right);
+		printf("%2d: %15s", node->id, S__LANG_NODE_STR[node->op]);
+		if (node->cond) {
+			printf(" %2d", node->cond->id);
+		}
+		else {
+			printf(" --");
+		}
+		if (node->left) {
+			printf(" %2d", node->left->id);
+		}
+		else {
+			printf(" --");
+		}
+		if (node->right) {
+			printf(" %2d", node->right->id);
+		}
+		else {
+			printf(" --");
+		}
+		printf("\n");
+	}
 }
 
 static int
-compile(const char *arg)
+stage(void)
 {
+	const struct s__lang_node *node;
 	s__lang_parser_t parser;
 	s__lang_lexer_t lexer;
 
-	if (!(lexer = s__lang_lexer_open(arg))) {
+	if (!(lexer = s__lang_lexer_open("test"))) {
 		S__TRACE(0);
 		return -1;
 	}
@@ -31,6 +56,8 @@ compile(const char *arg)
 		S__TRACE(0);
 		return -1;
 	}
+	node = s__lang_parser_root(parser);
+	print(node);
 	s__lang_lexer_close(lexer);
 	s__lang_parser_close(parser);
 	return 0;
@@ -41,7 +68,6 @@ help(void)
 {
 	printf("\n"
 	       "Usage: stingray [options]\n"
-	       "Usage: stingray [options] --compile input\n"
 	       "\n"
 	       "Options:\n"
 	       "\t --help    Print the help menu and exit\n"
@@ -55,8 +81,6 @@ help(void)
 int
 main(int argc, char *argv[])
 {
-	enum { NONE, COMPILE } mode = NONE;
-	const char *arg = NULL;
 	int notrace = 0;
 	int nocolor = 0;
 	int bist = 0;
@@ -83,37 +107,15 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--bist")) {
 			bist = 1;
 		}
-		else if (!strcmp(argv[i], "--compile") && !mode) {
-			mode = COMPILE;
-		}
-		else if (('-' != argv[i][0]) && !arg) {
-			arg = argv[i];
-		}
 		else {
 			fprintf(stderr, "bad argument: '%s'\n", argv[i]);
 			return -1;
 		}
 	}
-	if ((NONE == mode) && arg) {
-		fprintf(stderr, "bad argument: '%s'\n", arg);
-		return -1;
-	}
-	if ((COMPILE == mode) && !arg) {
-		fprintf(stderr, "missing argument\n");
-		return -1;
-	}
 	s__kernel_init(notrace, nocolor);
 	s__utils_init();
 	if (bist) {
 		if (s__utils_bist() || s__index_bist()) {
-			S__TRACE(0);
-			return -1;
-		}
-		return 0;
-	}
-	if (COMPILE == mode) {
-		if (compile(arg)) {
-			s__log("error: failed to compile '%s'", arg);
 			S__TRACE(0);
 			return -1;
 		}
